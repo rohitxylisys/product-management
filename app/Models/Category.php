@@ -10,7 +10,7 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['product_id', 'title', 'slug', 'status'];
+    protected $fillable = [ 'title', 'slug', 'status'];
 
     public static function boot()
     {
@@ -25,8 +25,8 @@ class Category extends Model
         });
     }
 
-    public function product()
+    public function products()
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsToMany(Product::class);
     }
 }

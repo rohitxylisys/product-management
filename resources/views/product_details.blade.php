@@ -1,5 +1,8 @@
+@extends('layouts.app')
+@section('content')
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,32 +13,40 @@
     <!-- Include Quill Editor styles -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 </head>
+
 <body>
-    <div class="container mt-5">
+    <div class="container">
         <h2>{{ $mode === 'edit' ? 'Edit Product' : ($mode === 'create' ? 'Add Product' : 'View Product') }}</h2>
+
         @if ($mode === 'edit' || $mode === 'create')
         <form id="product-form" method="POST" action="{{ route('products.store') }}" enctype="multipart/form-data">
             @csrf
-        @endif
+            @endif
+
             <div class="form-group">
                 <label for="title">Title</label>
                 <input type="text" class="form-control" id="title" name="title" value="{{ $product->title }}" {{ $mode === 'view' ? 'readonly' : '' }} required>
             </div>
+
             <div class="form-group">
                 <label for="featured_image">Featured Image</label>
+                @if ($mode !== 'view')
                 <input type="file" class="form-control-file" id="featured_image" name="featured_image" {{ $mode === 'view' ? 'disabled' : '' }} onchange="previewImage(event, 'featured_image_preview')">
+                @endif
                 <br>
                 <img id="featured_image_preview" src="{{ asset('storage/' . $product->featured_image) }}" alt="Featured Image Preview" style="max-width: 200px; height: auto;">
             </div>
+
             <div class="form-group">
                 <label for="description">Description</label>
                 @if ($mode === 'view')
-                    <div>{!! $product->description !!}</div>
+                <div>{!! $product->description !!}</div>
                 @else
-                    <div id="editor-container">{!! $product->description !!}</div>
-                    <textarea name="description" id="description" style="display:none;">{!! $product->description !!}</textarea>
+                <div id="editor-container">{!! $product->description !!}</div>
+                <textarea name="description" id="description" style="display:none;">{!! $product->description !!}</textarea>
                 @endif
             </div>
+
             <div class="form-group">
                 <label for="status">Status</label>
                 <select class="form-control" id="status" name="status" {{ $mode === 'view' ? 'disabled' : '' }} required>
@@ -43,30 +54,47 @@
                     <option value="Inactive" {{ $product->status == 'Inactive' ? 'selected' : '' }}>Inactive</option>
                 </select>
             </div>
+
             <div class="form-group">
-                <label for="gallery">Gallery</label>
-                <input type="file" class="form-control-file" id="gallery" name="gallery[]" multiple {{ $mode === 'view' ? 'disabled' : '' }}>
-                @if ($product->gallery)
+                <div class="form-group">
+                    <label for="category_id">Categories</label>
+                    <select class="form-control" id="category_id" name="category_id[]" multiple {{ $mode === 'view' ? 'disabled' : '' }}>
+                        @foreach($categories as $category)
+                        <option value="{{ $category->id }}" {{ in_array($category->id, $selectedCategories) ? 'selected' : '' }}>{{ $category->title }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="gallery">Gallery</label>
+                    @if ($mode !== 'view')
+                    <input type="file" class="form-control-file" id="gallery" name="gallery[]" multiple>
+                    @endif
+                    @if ($product->gallery)
                     <div class="row" id="gallery_preview">
-                        @foreach (json_decode($product->gallery) as $image)
-                            <div class="col-md-2">
-                                <img src="{{ asset('storage/' . $image) }}" alt="Gallery Image" class="img-thumbnail" style="max-width: 100%; height: auto;">
-                                @if ($mode === 'edit' || $mode === 'create')
-                                    <div class="text-center mt-2">
-                                        <label class="text-danger">
-                                            <input type="checkbox" name="delete_gallery[]" value="{{ $image }}"> Remove
-                                        </label>
-                                    </div>
-                                @endif
+                        @foreach (json_decode($product->gallery, true) as $image)
+                        <div class="col-md-2">
+                            <img src="{{ asset('storage/' . str_replace('public/', '', $image)) }}" alt="Gallery Image" class="img-thumbnail" style="max-width: 100%; height: auto;">
+                            @if ($mode === 'edit' || $mode === 'create')
+                            <div class="text-center mt-2">
+                                <label class="text-danger">
+                                    <input type="checkbox" name="delete_gallery[]" value="{{ $image }}"> Remove
+                                </label>
                             </div>
+                            @endif
+                        </div>
                         @endforeach
                     </div>
-                @endif
-            </div>
-            @if ($mode === 'edit' || $mode === 'create')
-            <button type="submit" class="btn btn-primary">Submit</button>
-            </form>
-            @endif
+                    @endif
+                </div>
+
+
+                @if ($mode === 'edit' || $mode === 'create')
+                <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+        @endif
+
     </div>
 
     <!-- Bootstrap JS and dependencies -->
@@ -97,4 +125,6 @@
         }
     </script>
 </body>
+
 </html>
+@endsection

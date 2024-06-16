@@ -1,4 +1,6 @@
-<!DOCTYPE html>
+
+@extends('layouts.app')
+@section('content')<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -60,3 +62,4 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
+@endsection

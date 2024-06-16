@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\User;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -17,7 +18,6 @@ class ProductController extends Controller
     {
         $products = Product::with('categories')->get();
         return view('product_list', ['products' => $products]);
-
     }
     public function getUserList()
     {
@@ -41,126 +41,132 @@ class ProductController extends Controller
         });
 
         return view('user_list', ['users' => $transformedUsers]);
-
     }
 
     public function show($slug)
     {
         $product = Product::with('categories')->where('slug', $slug)->first();
+
         if (is_null($product)) {
             return redirect()->route('products.index')->with('error', 'Product not found');
         }
-        return view('product_details', ['product' => $product, 'mode' => 'view']);
-    }
-    public function create()
-    {
-        // Typically, you might initialize a new Product model instance
-        $product = new Product();
+
+        $categories = Category::all(); // Fetch all categories
+
+        // Retrieve selected category IDs for the product
+        $selectedCategories = $product->categories->pluck('id')->toArray();
 
         return view('product_details', [
             'product' => $product,
-            'mode' => 'create'
+            'mode' => 'view',
+            'categories' => $categories,
+            'selectedCategories' => $selectedCategories
         ]);
     }
+    public function create()
+    {
+        $product = new Product();
+        $categories = Category::all(); // Fetch all categories
+
+        return view('product_details', [
+            'product' => $product,
+            'mode' => 'create',
+            'categories' => $categories,
+            'selectedCategories' => [] // No selected categories for a new product
+        ]);
+    }
+
 
     public function edit($slug)
     {
-        $product = Product::with('categories')->where('slug', $slug)->first();
+        // Fetch the product by slug along with its associated categories
+        $product = Product::where('slug', $slug)->first();
+    
+        // Check if the product exists
         if (is_null($product)) {
             return redirect()->route('products.index')->with('error', 'Product not found');
         }
-        return view('product_details', ['product' => $product, 'mode' => 'edit']);
+    
+        // Fetch all categories from the database
+        $categories = Category::all();
+    
+        // Get the IDs of categories that are currently associated with the product
+        $selectedCategories = $product->categories->pluck('id')->toArray();
+    
+        // Return the view with the product, categories, and selectedCategories
+        return view('product_details', [
+            'product' => $product,
+            'mode' => 'edit',
+            'categories' => $categories,
+            'selectedCategories' => $selectedCategories
+        ]);
     }
-    public function store(Request $request)
+    public function store(Request $request, $slug = null)
     {
-        info("call");
-        // Validate incoming request
+        // Validate the request based on whether it's for creating or updating
         $validatedData = $request->validate([
             'title' => 'required|string|max:255',
+            'featured_image' => $slug ? 'nullable|image|max:2048' : 'required|image|max:2048', // For update, featured_image is optional
             'description' => 'required|string',
             'status' => 'required|in:Active,Inactive',
-            'featured_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'gallery.*' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'category_id' => 'required|array', // ensure category_id is an array
+            'category_id.*' => 'exists:categories,id', // check if each category_id exists in categories table
+            'gallery.*' => 'nullable|image|max:2048',
         ]);
     
-        // Use slug based on title (if slug is not directly provided in the form)
-        info(Str::slug($validatedData['title']));
-        $slug = Str::slug($validatedData['title']);
-        // Check if a product with the given slug exists
-        $product = Product::where('slug', $slug)->first();
-        info($product);
-    
-        if (!$product) {
-            // Product doesn't exist, create a new one
-            $product = new Product();
-            $product->slug = $slug;
+        // Handle featured image and gallery
+        $featuredImage = null;
+        if ($request->hasFile('featured_image')) {
+            $featuredImage = $request->file('featured_image')->store('public/images');
         }
-        info("call2");
     
-        // Update or set fields
+        $galleryImages = [];
+        if ($request->hasFile('gallery')) {
+            foreach ($request->file('gallery') as $image) {
+                $galleryImages[] = $image->store('public/images');
+            }
+        }
+    
+        // Create or update product based on $slug presence
+        if ($slug) {
+            // Update existing product
+            $product = Product::where('slug', $slug)->firstOrFail();
+        } else {
+            // Create new product
+            $product = new Product();
+        }
+    
+        // Assign values to product model
         $product->title = $validatedData['title'];
+        $product->slug = Str::slug($validatedData['title']);
+        if ($featuredImage) {
+            $product->featured_image = str_replace('public/', '', $featuredImage);
+        }
+        $product->gallery = json_encode($galleryImages);
         $product->description = $validatedData['description'];
         $product->status = $validatedData['status'];
-    
-        // Handle featured image upload
-        if ($request->hasFile('featured_image')) {
-            $featuredImage = $request->file('featured_image');
-            $path = $featuredImage->store('public');
-            $product->featured_image = str_replace('public/', '', $path);
-        }
-    
-        // Handle gallery images
-        if ($request->hasFile('gallery')) {
-            $gallery = $request->file('gallery');
-            $galleryPaths = [];
-    
-            foreach ($gallery as $image) {
-                $path = $image->store('public');
-                $galleryPaths[] = str_replace('public/', '', $path);
-            }
-    
-            $product->gallery = json_encode($galleryPaths   );
-        }
-
-        if ($request->has('delete_gallery')) {
-            $deleteGallery = $request->input('delete_gallery');
-            $existingGallery = json_decode($product->gallery);
-    
-            // Remove selected images from storage and update gallery JSON
-            foreach ($deleteGallery as $imageToDelete) {
-                // Remove from storage
-                $path = 'public/' . $imageToDelete;
-                if (Storage::exists($path)) {
-                    Storage::delete($path);
-                }
-    
-                // Remove from JSON array
-                $existingGallery = array_diff($existingGallery, [$imageToDelete]);
-            }
-    
-            // Update product gallery
-            $product->gallery = json_encode(array_values($existingGallery)); // re-index array
-        }
-    
-        // Save the product
         $product->save();
     
-        // Determine if this was a create or update action
-        $action = $product->wasRecentlyCreated ? 'created' : 'updated';
+        // Sync categories with the product
+        $product->categories()->sync($validatedData['category_id']);
     
-        return redirect()->route('products.edit', ['slug' => $product->slug])
-                         ->with('success', "Product $action successfully");
+        // Redirect back with success message
+        return redirect()->route('products.index')->with('success', $slug ? 'Product updated successfully.' : 'Product added successfully.');
     }
-
     public function destroy($slug)
     {
         $product = Product::where('slug', $slug)->first();
+    
         if (is_null($product)) {
             return response()->json(['message' => 'Product not found'], 404);
         }
-
+    
+        // Detach categories associated with the product
+        $product->categories()->detach();
+    
+        // Delete the product
         $product->delete();
+    
         return redirect()->route('products.index')->with('success', 'Product deleted successfully');
     }
-
 }

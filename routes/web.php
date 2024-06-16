@@ -35,17 +35,18 @@ Route::middleware(['auth', 'permission:manage products'])->group(function () {
     Route::get('products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
 });
 
-Route::middleware(['auth', 'permission:view categories'])->group(function () {
-    Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
-    Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
-});
-
 Route::middleware(['auth', 'permission:manage categories'])->group(function () {
+    Route::get('categories/add', [CategoryController::class, 'add'])->name('categories.add');
     Route::post('categories', [CategoryController::class, 'store'])->name('categories.store');
-    Route::get('categories/create', [CategoryController::class, 'create'])->name('categories.create');
     Route::put('categories/{category}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('categories/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
     Route::get('categories/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+});
+
+Route::middleware(['auth', 'permission:view categories'])->group(function () {
+    Route::get('categories/products', [CategoryController::class, 'getProductsByCategory'])->name('categories.products');
+    Route::get('categories', [CategoryController::class, 'index'])->name('categories.index');
+    Route::get('categories/{category}', [CategoryController::class, 'show'])->name('categories.show');
 });
 
 Auth::routes();

@@ -1,3 +1,5 @@
+@extends('layouts.app')
+@section('content')
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,7 +35,9 @@
 <div class="container">
     <h1 class="my-4 text-center">Product List</h1>
     <div class="mb-3">
+    @if(Auth::user()->isAdmin())
     <a href="{{ route('products.create') }}" class="btn btn-success">Add Product</a>
+    @endif
 </div>
     <div class="table-responsive">
         <table class="table table-bordered table-hover">
@@ -45,7 +49,9 @@
                     <th>Description</th>
                     <th>Status</th>
                     <th>Categories</th>
+                    @if(Auth::user()->isAdmin())
                     <th>Action</th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -53,8 +59,8 @@
                     <tr>
                         <td>{{ $product->id }}</td>
                         <td>{{ $product->title }}</td>
-                        <td><img src="{{ $product->featured_image }}" class="product-image" alt="{{ $product->title }}"></td>
-                        <td>{{ $product->description }}</td>
+                        <td><img src="{{ asset('storage/' . $product->featured_image) }}" class="product-image" alt="{{ $product->title }}"></td>
+                        <td>{!! $product->description !!}</td>
                         <td>{{ $product->status }}</td>
                         <td>
                             <ul class="categories">
@@ -63,6 +69,7 @@
                                 @endforeach
                             </ul>
                         </td>
+                        @if(Auth::user()->isAdmin())
                         <td>
                             <a href="{{ route('products.show', $product->slug) }}" class="btn btn-info btn-sm">View</a>
                             <a href="{{ route('products.edit', $product->slug) }}" class="btn btn-primary btn-sm">Edit</a>
@@ -72,6 +79,7 @@
                                 <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</button>
                             </form>
                         </td>
+                        @endif
                     </tr>
                 @endforeach
             </tbody>
@@ -84,3 +92,4 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
+@endsection
